@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 1. База данных (PostgreSQL)
+  # Тут будут лежать сами тикеты и результаты анализа
+  db:
+    image: postgres:15-alpine
+    container_name: ticket_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ticket_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Кэш (Redis)
+  # Чтобы не спрашивать ChatGPT об одном и том же дважды
+  redis:
+    image: redis:7-alpine
+    container_name: ticket_cache
+    ports:
+      - "6379:6379"
+
+# Брокер сообщений (Kafka)
+  kafka:
+    image: apache/kafka:latest
+    container_name: ticket_broker
+    ports:
+      - "9092:9092"
+    environment:
+      # Настройки для запуска без Zookeeper (современный режим KRaft)
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+
+  api_service:
+    build: ./services/api_service
+    container_name: ticket_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/ticket_system
+    depends_on:
+      - db
+      - kafka
+      - redis
+
+# Место на диске, чтобы данные в БД не стирались при перезагрузке
+volumes:
+  postgres_data:
