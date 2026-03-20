@@ -14,6 +14,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   # 2. Кэш (Redis)
   # Чтобы не спрашивать ChatGPT об одном и том же дважды
@@ -22,6 +23,7 @@ services:
     container_name: ticket_cache
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
 # Брокер сообщений (Kafka)
   kafka:
@@ -42,6 +44,7 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    restart: unless-stopped
 
   api_service:
     build: ./services/api_service
@@ -54,6 +57,7 @@ services:
       - db
       - kafka
       - redis
+    restart: unless-stopped
 
 # Место на диске, чтобы данные в БД не стирались при перезагрузке
 volumes:
