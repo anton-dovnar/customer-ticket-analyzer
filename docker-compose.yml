@@ -4,7 +4,7 @@ services:
   # 1. База данных (PostgreSQL)
   # Тут будут лежать сами тикеты и результаты анализа
   db:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: ticket_db
     environment:
       POSTGRES_USER: user
@@ -18,14 +18,14 @@ services:
   # 2. Кэш (Redis)
   # Чтобы не спрашивать ChatGPT об одном и том же дважды
   redis:
-    image: redis:7-alpine
+    image: redis:8.6-alpine
     container_name: ticket_cache
     ports:
       - "6379:6379"
 
 # Брокер сообщений (Kafka)
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.1.2
     container_name: ticket_broker
     ports:
       - "9092:9092"
