@@ -30,7 +30,9 @@ services:
     restart: unless-stopped
 
   api_service:
-    build: ./services/api_service
+    build:
+      context: .
+      dockerfile: services/api_service/Dockerfile
     container_name: ticket_api
     ports:
       - "8000:8000"
