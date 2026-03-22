@@ -16,12 +16,6 @@ docker compose up --build
 
 ## Dev commands (uv)
 
-Run API:
-
-```bash
-uv run uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
-```
-
 Run tests:
 
 ```bash
