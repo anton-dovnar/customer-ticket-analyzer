@@ -1,49 +1,137 @@
 services:
-  # 1. База данных (PostgreSQL)
-  # Тут будут лежать сами тикеты и результаты анализа
-  db:
+  postgres-ticket:
     image: postgres:18-alpine
     container_name: ticket_db
-    env_file: docker/db.env
+    env_file: docker/env/postgres-ticket.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata_ticket:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # 2. Кэш (Redis)
-  # Чтобы не спрашивать ChatGPT об одном и том же дважды
+  postgres-analysis:
+    image: postgres:18-alpine
+    container_name: ticket_analysis_db
+    env_file: docker/env/postgres-analysis.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata_analysis:/var/lib/postgresql/data
+    restart: unless-stopped
+
   redis:
     image: redis:8.6-alpine
     container_name: ticket_cache
-    ports:
-      - "6379:6379"
     restart: unless-stopped
+    env_file: docker/env/redis.env
+    command: ["sh", "-c", "redis-server --requirepass \"$${REDIS_PASSWORD}\""]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:6379:6379"
 
-# Брокер сообщений (Kafka)
   kafka:
     image: apache/kafka:4.1.2
     container_name: ticket_broker
-    env_file: docker/kafka.env
-    ports:
-      - "9092:9092"
     restart: unless-stopped
+    env_file: docker/env/kafka.env
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 20s
+    ports:
+      - "127.0.0.1:9092:9092"
 
-  api_service:
+  kafka-init:
+    image: apache/kafka:4.1.2
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file: docker/env/kafka.env
+    entrypoint: ["/bin/bash", "-lc"]
+    command: >
+      "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092
+      --create --if-not-exists --topic tickets.analysis.requested
+      --partitions 1 --replication-factor 1 &&
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092
+      --create --if-not-exists --topic analysis.completed
+      --partitions 1 --replication-factor 1"
+
+  ticket:
     build:
       context: .
-      dockerfile: services/api_service/Dockerfile
+      dockerfile: docker/ticket.Dockerfile
     container_name: ticket_api
+    restart: unless-stopped
+    env_file: docker/env/ticket.env
+    depends_on:
+      postgres-ticket:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/ticket_system
-    depends_on:
-      - db
-      - kafka
-      - redis
-    restart: unless-stopped
 
-# Место на диске, чтобы данные в БД не стирались при перезагрузке
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: docker/analysis.Dockerfile
+    container_name: ticket_analysis_worker
+    restart: unless-stopped
+    env_file: docker/env/analysis.env
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+
+  analysis-api:
+    build:
+      context: .
+      dockerfile: docker/analysis-api.Dockerfile
+    container_name: ticket_analysis_api
+    restart: unless-stopped
+    env_file: docker/env/analysis.env
+    environment:
+      PORT: "8001"
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+
 volumes:
-  postgres_data:
+  pgdata_ticket:
+    driver: local
+  pgdata_analysis:
+    driver: local

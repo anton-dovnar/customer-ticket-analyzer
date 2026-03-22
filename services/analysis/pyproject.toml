@@ -3,20 +3,17 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "api-service"
+name = "analysis-service"
 version = "0.1.0"
-description = "AI Customer Support Analyzer"
-readme = "README.md"
+description = "Kafka consumer and LLM ticket analysis"
 requires-python = ">=3.14"
 dependencies = [
+  "ticket-shared",
   "fastapi==0.135.1",
   "uvicorn[standard]==0.42",
-  "pydantic==2.12.5",
   "pydantic-settings==2.13.1",
   "sqlalchemy[asyncio]==2.0.48",
   "asyncpg==0.31",
-  "alembic==1.18.4",
-  "httpx==0.28.1",
   "openai==2.29",
   "redis==7.3.0",
   "aiokafka==0.13.0",
@@ -24,4 +21,4 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["analysis"]

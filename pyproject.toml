@@ -4,14 +4,18 @@ version = "0.1.0"
 description = "AI Customer Support Analyzer"
 requires-python = ">=3.14"
 dependencies = [
-  "api-service",
+  "ticket-service",
+  "analysis-service",
+  "ticket-shared",
 ]
 
 [tool.uv.sources]
-api-service = { workspace = true }
+ticket-service = { workspace = true }
+analysis-service = { workspace = true }
+ticket-shared = { workspace = true }
 
 [tool.uv.workspace]
-members = ["services/*"]
+members = ["services/*", "packages/*"]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -32,7 +36,7 @@ testpaths = ["services"]
 asyncio_mode = "strict"
 
 [tool.ruff]
-src = ["services"]
+src = ["packages", "services"]
 respect-gitignore = true
 force-exclude = true
 fix = true
@@ -80,7 +84,7 @@ case-sensitive = true
 combine-as-imports = true
 force-single-line = false
 force-sort-within-sections = true
-known-first-party = ["app"]
+known-first-party = ["ticket", "ticket_shared", "analysis"]
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 lines-after-imports = 2
 split-on-trailing-comma = true
@@ -98,8 +102,12 @@ warn_return_any = true
 show_error_codes = true
 warn_unused_ignores = true
 python_version = "3.14"
-mypy_path = "services/api_service"
-files = ["services/api_service/app"]
+mypy_path = "services/ticket"
+files = [
+  "packages/ticket_shared/ticket_shared",
+  "services/ticket/ticket",
+  "services/analysis/analysis",
+]
 exclude = "(?x)(^services/.*/tests/)"
 plugins = ["pydantic.mypy"]
 

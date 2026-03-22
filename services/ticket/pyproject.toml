@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ticket-service"
+version = "0.1.0"
+description = "Ticket intake HTTP API (FastAPI + Kafka producer)"
+requires-python = ">=3.14"
+dependencies = [
+  "ticket-shared",
+  "fastapi==0.135.1",
+  "uvicorn[standard]==0.42",
+  "pydantic==2.12.5",
+  "pydantic-settings==2.13.1",
+  "sqlalchemy[asyncio]==2.0.48",
+  "asyncpg==0.31",
+  "alembic==1.18.4",
+  "httpx==0.28.1",
+  "openai==2.29",
+  "redis==7.3.0",
+  "aiokafka==0.13.0",
+  "orjson==3.11.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ticket"]
