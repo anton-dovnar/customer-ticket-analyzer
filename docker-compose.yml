@@ -122,8 +122,6 @@ services:
     container_name: ticket_analysis_api
     restart: unless-stopped
     env_file: docker/env/analysis.env
-    environment:
-      PORT: "8001"
     depends_on:
       postgres-analysis:
         condition: service_healthy
